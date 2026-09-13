@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agentic Workflows</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">◆</div>
+          <div>
+            <h1>Agentic Workflows</h1>
+            <p class="tagline">Inbound → conversation → meeting</p>
+          </div>
+        </div>
+
+        <div class="mode-switch">
+          <button class="mode-btn active" data-mode="assistant">Assistant</button>
+          <button class="mode-btn" data-mode="sdr">SDR outreach</button>
+        </div>
+
+        <div class="status-card">
+          <div class="status-row">
+            <span>Backend</span>
+            <span id="status-dot" class="dot dot-idle">checking…</span>
+          </div>
+          <div class="status-row">
+            <span>LLM provider</span>
+            <span id="provider" class="pill">—</span>
+          </div>
+          <div class="status-row">
+            <span>Tools</span>
+            <span id="tool-count" class="pill">—</span>
+          </div>
+        </div>
+
+        <!-- SDR: lead picker + current lead card -->
+        <div id="sdr-panel" class="sdr-panel hidden">
+          <p class="hints-title">Leads from Salesbot.io</p>
+          <button id="import-btn" class="primary-btn">⬆ Import leads (CSV)</button>
+          <input id="csv-input" type="file" accept=".csv,text/csv" class="hidden" />
+          <div id="import-status" class="import-status"></div>
+          <div id="lead-list" class="lead-list"></div>
+          <div id="lead-card" class="lead-card"></div>
+          <button id="restart-outreach" class="primary-btn">↻ Restart outreach</button>
+          <p class="hints-title">Reply as the prospect</p>
+          <div id="sdr-hints" class="hints"></div>
+        </div>
+
+        <!-- Assistant: example prompts -->
+        <div id="assistant-panel" class="hints">
+          <p class="hints-title">Try the revenue tools</p>
+          <button
+            class="hint"
+            data-msg="score lead: title=VP Marketing; company_size=800; source=demo_request; signal=viewed pricing 3x"
+          >
+            Score an inbound lead
+          </button>
+          <button
+            class="hint"
+            data-msg="qualify: budget=yes; authority=yes; need=yes; timeline=no"
+          >
+            Qualify with BANT
+          </button>
+          <button
+            class="hint"
+            data-msg="forecast: leads=200 meeting_rate=30% close_rate=25% acv=12000"
+          >
+            Forecast revenue
+          </button>
+          <button class="hint" data-msg="help">What can you do?</button>
+        </div>
+
+        <p class="footnote">
+          Offline demo mode works with no API key. Set
+          <code>OPENAI_API_KEY</code> for full natural-language conversation.
+        </p>
+      </aside>
+
+      <main class="chat">
+        <div id="messages" class="messages"></div>
+        <form id="composer" class="composer">
+          <input
+            id="input"
+            type="text"
+            autocomplete="off"
+            placeholder="Ask your agent anything…"
+          />
+          <button id="send" type="submit">Send</button>
+        </form>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
