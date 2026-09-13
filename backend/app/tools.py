@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List
 from zoneinfo import ZoneInfo
 
+from . import revenue
+
 
 @dataclass
 class Tool:
@@ -163,6 +165,104 @@ def build_registry() -> Dict[str, Tool]:
                 "required": ["text"],
             },
             func=lambda text: reverse_text(text),
+        ),
+        Tool(
+            name="score_lead",
+            description=(
+                "Score an inbound lead by ICP fit and source intent, returning a "
+                "Hot/Warm/Cold tier, an SLA, and the recommended next action."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "The lead's job title."},
+                    "company_size": {
+                        "type": "string",
+                        "description": "Approximate number of employees at the company.",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "Inbound source, e.g. demo_request, pricing, content_download.",
+                    },
+                    "signal": {
+                        "type": "string",
+                        "description": "Any recent buying/intent signal, if known.",
+                    },
+                },
+                "required": ["title"],
+            },
+            func=lambda title, company_size="", source="", signal="": revenue.score_lead(
+                title, company_size, source, signal
+            ),
+        ),
+        Tool(
+            name="qualify_lead",
+            description="Qualify a lead with BANT (Budget, Authority, Need, Timeline).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "budget": {"type": "string", "description": "Is budget available? yes/no."},
+                    "authority": {"type": "string", "description": "Is this a decision maker? yes/no."},
+                    "need": {"type": "string", "description": "Is there a clear need? yes/no."},
+                    "timeline": {"type": "string", "description": "Is there a timeline? yes/no."},
+                },
+                "required": [],
+            },
+            func=lambda budget="", authority="", need="", timeline="": revenue.qualify_lead(
+                budget, authority, need, timeline
+            ),
+        ),
+        Tool(
+            name="forecast_revenue",
+            description=(
+                "Project meetings booked and revenue from an inbound lead volume, "
+                "given the lead→meeting rate, meeting→close rate, and average deal value."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "leads": {"type": "string", "description": "Number of inbound leads."},
+                    "meeting_rate": {
+                        "type": "string",
+                        "description": "Lead→meeting conversion, e.g. '30%' or 0.3.",
+                    },
+                    "close_rate": {
+                        "type": "string",
+                        "description": "Meeting→close conversion, e.g. '25%' or 0.25.",
+                    },
+                    "acv": {"type": "string", "description": "Average deal value (annual contract value)."},
+                },
+                "required": ["leads", "meeting_rate", "close_rate", "acv"],
+            },
+            func=lambda leads="", meeting_rate="", close_rate="", acv="": revenue.forecast_revenue(
+                leads, meeting_rate, close_rate, acv
+            ),
+        ),
+        Tool(
+            name="draft_email",
+            description=(
+                "Draft a short, personalized outreach email that drives to a booked "
+                "meeting. Purpose can be meeting_request, follow_up, or recap."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Recipient's first name."},
+                    "company": {"type": "string", "description": "Recipient's company."},
+                    "purpose": {
+                        "type": "string",
+                        "description": "meeting_request | follow_up | recap.",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "What the outreach is about / their goal.",
+                    },
+                },
+                "required": ["name"],
+            },
+            func=lambda name, company="your team", purpose="meeting_request", context="your goals": revenue.draft_email(
+                name, company, purpose, context
+            ),
         ),
     ]
     return {tool.name: tool for tool in tools}

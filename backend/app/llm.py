@@ -66,6 +66,11 @@ class RuleBasedLLM(LLMClient):
         if "help" in lowered or "what can you do" in lowered:
             return Decision(final_text=self._greeting(tools))
 
+        # Inbound-revenue intents (offline mode uses key=value arguments).
+        revenue_decision = self._route_revenue(text, lowered)
+        if revenue_decision is not None:
+            return revenue_decision
+
         # Arithmetic: either a bare expression or "what is 2 + 2".
         expr = self._extract_math(text)
         if expr:
@@ -94,6 +99,58 @@ class RuleBasedLLM(LLMClient):
         # Fallback: explain that this is the offline brain.
         return Decision(final_text=self._fallback(text, tools))
 
+    def _parse_kv(self, text: str) -> Dict[str, str]:
+        """Parse 'key=value' pairs; values run until the next 'key=' or ';'."""
+        pairs: Dict[str, str] = {}
+        for m in re.finditer(r"(\w+)\s*=\s*([^;]+?)(?=\s+\w+\s*=|;|$)", text):
+            pairs[m.group(1).strip().lower()] = m.group(2).strip()
+        return pairs
+
+    def _route_revenue(self, text: str, lowered: str) -> Optional[Decision]:
+        kv = self._parse_kv(text)
+
+        if lowered.startswith("score") and ("lead" in lowered or "title" in kv):
+            return Decision(
+                tool_calls=[{"name": "score_lead", "arguments": {
+                    "title": kv.get("title", ""),
+                    "company_size": kv.get("company_size", kv.get("size", "")),
+                    "source": kv.get("source", ""),
+                    "signal": kv.get("signal", ""),
+                }}]
+            )
+
+        if lowered.startswith("qualify") or (kv and "budget" in kv):
+            return Decision(
+                tool_calls=[{"name": "qualify_lead", "arguments": {
+                    "budget": kv.get("budget", ""),
+                    "authority": kv.get("authority", ""),
+                    "need": kv.get("need", ""),
+                    "timeline": kv.get("timeline", ""),
+                }}]
+            )
+
+        if lowered.startswith("forecast") or "revenue" in lowered or "leads" in kv:
+            return Decision(
+                tool_calls=[{"name": "forecast_revenue", "arguments": {
+                    "leads": kv.get("leads", ""),
+                    "meeting_rate": kv.get("meeting_rate", kv.get("meeting", "")),
+                    "close_rate": kv.get("close_rate", kv.get("close", "")),
+                    "acv": kv.get("acv", kv.get("deal", "")),
+                }}]
+            )
+
+        if ("draft" in lowered and "email" in lowered) or lowered.startswith(("email", "outreach")):
+            return Decision(
+                tool_calls=[{"name": "draft_email", "arguments": {
+                    "name": kv.get("name", ""),
+                    "company": kv.get("company", "your team"),
+                    "purpose": kv.get("purpose", "meeting_request"),
+                    "context": kv.get("context", "your goals"),
+                }}]
+            )
+
+        return None
+
     def _extract_math(self, text: str) -> Optional[str]:
         candidate = text
         m = re.search(r"(?:what\s+is|calculate|compute|evaluate|=)\s*(.+)", text, re.I)
@@ -113,12 +170,16 @@ class RuleBasedLLM(LLMClient):
     def _greeting(self, tools: Dict[str, Tool]) -> str:
         names = ", ".join(sorted(tools))
         return (
-            "Hi! I'm your agentic assistant. I'm running in offline demo mode "
-            "(no LLM API key set), but I can already use real tools.\n\n"
+            "Hi! I'm your inbound-revenue agent. I'm running in offline demo mode "
+            "(no LLM API key set), but I can already use real tools to move a lead "
+            "from inbound → booked meeting → revenue.\n\n"
             f"Available tools: {names}.\n\n"
-            "Try: 'What is 23 * 19?', 'What time is it in America/New_York?', "
-            "or 'reverse text: hello world'. Set OPENAI_API_KEY to unlock full "
-            "natural-language reasoning with the same tools."
+            "Try these (offline mode uses key=value):\n"
+            "  • score lead: title=VP Marketing; company_size=800; source=demo_request; signal=viewed pricing 3x\n"
+            "  • qualify: budget=yes; authority=yes; need=yes; timeline=no\n"
+            "  • forecast: leads=200 meeting_rate=30% close_rate=25% acv=12000\n"
+            "  • draft email: name=Sam; company=Acme; purpose=meeting_request; context=faster onboarding\n\n"
+            "Set OPENAI_API_KEY to just type naturally — the LLM fills these in for you."
         )
 
     def _fallback(self, text: str, tools: Dict[str, Tool]) -> str:

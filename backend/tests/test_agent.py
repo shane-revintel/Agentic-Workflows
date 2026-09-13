@@ -42,7 +42,7 @@ def test_agent_routes_reverse():
 def test_agent_greeting_has_no_tool_calls():
     result = make_agent().run("hello")
     assert result.tool_calls == []
-    assert "agentic assistant" in result.reply.lower()
+    assert "inbound-revenue agent" in result.reply.lower()
 
 
 def test_agent_handles_conversation_history():

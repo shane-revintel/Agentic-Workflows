@@ -113,6 +113,6 @@ async function loadHealth() {
 
 addMessage(
   "agent",
-  "Welcome to your fresh canvas. I'm a starter agentic assistant with a real tool-calling loop. Ask me to do some math, check the time, or reverse text — try the suggestions on the left."
+  "Welcome to your inbound-revenue agent. I can score and qualify inbound leads, draft the outreach that books the meeting, and forecast the revenue those meetings produce — with a real tool-calling loop. Try the buttons on the left, or type 'help'."
 );
 loadHealth();

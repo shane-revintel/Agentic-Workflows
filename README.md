@@ -1,11 +1,14 @@
 # Agentic-Workflows
 
-A clean, working starter for building an **agentic AI product** from scratch.
+A clean, working starter for building an **agentic AI product** from scratch —
+tuned for an **inbound revenue motion**: turn inbound leads into booked
+meetings into revenue.
 
 It ships with a real agent architecture you can grow into a company:
 
 - 🧠 **Agent loop** — the agent reasons, calls tools, feeds results back, and repeats until it has an answer.
-- 🛠️ **Tools** — pluggable capabilities (calculator, clock, text utilities) described with JSON schemas so an LLM can call them.
+- 💸 **Inbound-revenue tools** — `score_lead`, `qualify_lead` (BANT), `forecast_revenue`, and `draft_email` cover the operational core of inbound → meeting → revenue.
+- 🛠️ **Utility tools** — calculator, clock, and text utilities, all described with JSON schemas so an LLM can call them.
 - 🔌 **Swappable LLM backend** — runs fully offline in demo mode with a deterministic "brain", and upgrades to a real model the moment you set `OPENAI_API_KEY`.
 - 💬 **Web chat UI** — a modern single-page interface served straight from the backend.
 - ✅ **Tests** — automated coverage for the agent, tools, and API.
@@ -44,7 +47,21 @@ python3 -m uvicorn app.main:app --reload
 # 3. Open http://localhost:8000 in your browser
 ```
 
-Try: `What is 23 * 19?`, `What time is it in America/New_York?`, or `reverse text: agentic ai company`.
+### Try the inbound-revenue tools
+
+In offline mode, pass structured `key=value` arguments (with an LLM key you can
+just type naturally and the model fills these in):
+
+- `score lead: title=VP Marketing; company_size=800; source=demo_request; signal=viewed pricing 3x`
+- `qualify: budget=yes; authority=yes; need=yes; timeline=no`
+- `forecast: leads=200 meeting_rate=30% close_rate=25% acv=12000`
+- `draft email: name=Sam; company=Acme; purpose=meeting_request; context=faster onboarding`
+
+Utility examples: `What is 23 * 19?`, `What time is it in America/New_York?`.
+
+> **Plug in real data next:** the `score_lead`/`draft_email` tools are ready to be
+> backed by live enrichment (e.g. ZoomInfo) and scheduling/CRM (e.g. Outlook)
+> the same way the LLM backend plugs in — one function in `backend/app/revenue.py`.
 
 ## Enable a real LLM
 
