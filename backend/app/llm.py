@@ -203,8 +203,17 @@ SYSTEM_PROMPT = (
 )
 
 
+_OPENAI_MAX_STEPS = 5
+
+
 class OpenAILLM(LLMClient):
-    """Uses OpenAI chat completions with function-calling over the tools."""
+    """Uses OpenAI chat completions with function-calling over the tools.
+
+    This backend runs the full reason → call tools → answer loop internally so
+    the provider-native message protocol (assistant tool_calls + matching tool
+    results by id) stays correct, then returns the final answer plus the tool
+    calls it executed for reporting.
+    """
 
     name = "openai"
 
@@ -215,36 +224,68 @@ class OpenAILLM(LLMClient):
         self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
     def decide(self, messages: List[Dict[str, str]], tools: Dict[str, Tool]) -> Decision:
-        payload = [{"role": "system", "content": SYSTEM_PROMPT}]
+        convo: List[Dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
         for m in messages:
-            if m["role"] == "tool":
-                payload.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": m.get("tool_call_id", "call_0"),
-                        "content": m["content"],
-                    }
-                )
-            else:
-                payload.append({"role": m["role"], "content": m["content"]})
+            # Only user/assistant turns reach here; this backend owns tool turns.
+            if m["role"] in ("user", "assistant"):
+                convo.append({"role": m["role"], "content": m["content"]})
 
-        response = self._client.chat.completions.create(
-            model=self.model,
-            messages=payload,
-            tools=[t.to_openai_schema() for t in tools.values()],
-            temperature=0.2,
-        )
-        choice = response.choices[0].message
-        if choice.tool_calls:
-            calls = []
+        executed: List[Dict[str, Any]] = []
+        schemas = [t.to_openai_schema() for t in tools.values()]
+
+        for _ in range(_OPENAI_MAX_STEPS):
+            response = self._client.chat.completions.create(
+                model=self.model,
+                messages=convo,
+                tools=schemas,
+                temperature=0.2,
+            )
+            choice = response.choices[0].message
+
+            if not choice.tool_calls:
+                return Decision(final_text=choice.content or "", tool_calls=executed)
+
+            convo.append(
+                {
+                    "role": "assistant",
+                    "content": choice.content or "",
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        }
+                        for tc in choice.tool_calls
+                    ],
+                }
+            )
+
             for tc in choice.tool_calls:
                 try:
                     args = json.loads(tc.function.arguments or "{}")
                 except json.JSONDecodeError:
                     args = {}
-                calls.append({"name": tc.function.name, "arguments": args})
-            return Decision(tool_calls=calls)
-        return Decision(final_text=choice.content or "")
+                result = self._run_tool(tools, tc.function.name, args)
+                executed.append({"name": tc.function.name, "arguments": args, "result": result})
+                convo.append({"role": "tool", "tool_call_id": tc.id, "content": result})
+
+        return Decision(
+            final_text="I wasn't able to finish that within the step limit.",
+            tool_calls=executed,
+        )
+
+    @staticmethod
+    def _run_tool(tools: Dict[str, Tool], name: str, args: Dict[str, Any]) -> str:
+        tool = tools.get(name)
+        if tool is None:
+            return f"Unknown tool: {name}"
+        try:
+            return tool.func(**args)
+        except Exception as exc:  # noqa: BLE001 - surface tool errors back to the model
+            return f"Tool {name} failed: {exc}"
 
 
 def get_llm() -> LLMClient:

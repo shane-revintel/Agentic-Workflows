@@ -37,20 +37,22 @@ class Agent:
         for _ in range(MAX_STEPS):
             decision: Decision = self.llm.decide(messages, self.tools)
 
-            if decision.tool_calls:
-                for call in decision.tool_calls:
-                    result = self._execute_tool(call["name"], call.get("arguments", {}))
-                    executed.append(
-                        {"name": call["name"], "arguments": call.get("arguments", {}), "result": result}
-                    )
-                    messages.append({"role": "tool", "content": result})
-                continue
+            # A final answer ends the loop. Some backends (e.g. OpenAI) run their
+            # own tool loop internally and report the calls they already executed
+            # via decision.tool_calls, so include those in the result.
+            if decision.final_text is not None:
+                return AgentResult(
+                    reply=decision.final_text,
+                    tool_calls=executed + list(decision.tool_calls),
+                    provider=self.llm.name,
+                )
 
-            return AgentResult(
-                reply=decision.final_text or "",
-                tool_calls=executed,
-                provider=self.llm.name,
-            )
+            for call in decision.tool_calls:
+                result = self._execute_tool(call["name"], call.get("arguments", {}))
+                executed.append(
+                    {"name": call["name"], "arguments": call.get("arguments", {}), "result": result}
+                )
+                messages.append({"role": "tool", "content": result})
 
         # Safety valve: summarize whatever tool output we have.
         fallback = executed[-1]["result"] if executed else "I couldn't complete that request."
