@@ -26,12 +26,15 @@ function addMessage(role, text, toolCalls) {
   if (toolCalls && toolCalls.length) {
     const tools = el("div", "tools");
     toolCalls.forEach((tc) => {
-      const args = JSON.stringify(tc.arguments);
+      const args = Object.entries(tc.arguments || {})
+        .filter(([, v]) => v !== "" && v !== null && v !== undefined)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(", ");
       tools.appendChild(
         el(
           "div",
           "tool-chip",
-          `<b>⚙ ${escapeHtml(tc.name)}</b>(${escapeHtml(args)}) → ${escapeHtml(tc.result)}`
+          `<b>⚙ ${escapeHtml(tc.name)}</b>${args ? " · " + escapeHtml(args) : ""}`
         )
       );
     });
