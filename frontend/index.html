@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agentic Workflows</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">◆</div>
+          <div>
+            <h1>Agentic Workflows</h1>
+            <p class="tagline">Your fresh canvas for AI agents</p>
+          </div>
+        </div>
+
+        <div class="status-card">
+          <div class="status-row">
+            <span>Backend</span>
+            <span id="status-dot" class="dot dot-idle">checking…</span>
+          </div>
+          <div class="status-row">
+            <span>LLM provider</span>
+            <span id="provider" class="pill">—</span>
+          </div>
+          <div class="status-row">
+            <span>Tools</span>
+            <span id="tool-count" class="pill">—</span>
+          </div>
+        </div>
+
+        <div class="hints">
+          <p class="hints-title">Try asking</p>
+          <button class="hint" data-msg="What is 23 * 19?">What is 23 × 19?</button>
+          <button class="hint" data-msg="What time is it in America/New_York?">
+            Time in New York
+          </button>
+          <button class="hint" data-msg="reverse text: agentic ai company">
+            Reverse some text
+          </button>
+          <button class="hint" data-msg="help">What can you do?</button>
+        </div>
+
+        <p class="footnote">
+          Offline demo mode works with no API key. Set
+          <code>OPENAI_API_KEY</code> to enable full LLM reasoning.
+        </p>
+      </aside>
+
+      <main class="chat">
+        <div id="messages" class="messages"></div>
+        <form id="composer" class="composer">
+          <input
+            id="input"
+            type="text"
+            autocomplete="off"
+            placeholder="Ask your agent anything…"
+          />
+          <button id="send" type="submit">Send</button>
+        </form>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
