@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List
 from zoneinfo import ZoneInfo
 
-from . import revenue
+from . import booking, revenue
 
 
 @dataclass
@@ -262,6 +262,38 @@ def build_registry() -> Dict[str, Tool]:
             },
             func=lambda name, company="your team", purpose="meeting_request", context="your goals": revenue.draft_email(
                 name, company, purpose, context
+            ),
+        ),
+        Tool(
+            name="propose_meeting_times",
+            description="Suggest three concrete meeting time slots over the next few business days.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "timezone": {
+                        "type": "string",
+                        "description": "IANA timezone for the slots, e.g. 'America/New_York'.",
+                    }
+                },
+                "required": [],
+            },
+            func=lambda timezone="UTC": booking.propose_meeting_times(timezone),
+        ),
+        Tool(
+            name="book_meeting",
+            description="Book a meeting once the lead agrees to a specific time.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "The lead's name."},
+                    "when": {"type": "string", "description": "The agreed time, e.g. 'Tuesday 10:00'."},
+                    "email": {"type": "string", "description": "The lead's email, if known."},
+                    "topic": {"type": "string", "description": "Short meeting topic."},
+                },
+                "required": ["name", "when"],
+            },
+            func=lambda name, when, email="", topic="intro call": booking.book_meeting(
+                name, when, email, topic
             ),
         ),
     ]

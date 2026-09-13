@@ -73,6 +73,111 @@ body {
   color: var(--muted);
 }
 
+.mode-switch {
+  display: flex;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 4px;
+}
+.mode-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mode-btn.active {
+  background: linear-gradient(135deg, var(--accent), #6a4cff);
+  color: white;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.sdr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lead-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lead-chip {
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.lead-chip.active {
+  border-color: var(--accent);
+  color: #c9bcff;
+}
+
+.lead-card {
+  background: var(--panel-2);
+  border: 1px solid rgba(124, 92, 255, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.lead-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+.lead-title {
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.lead-fit {
+  color: var(--text);
+}
+.lead-score {
+  margin-top: 6px;
+  color: #a5f3fc;
+  font-weight: 600;
+}
+
+.primary-btn {
+  background: rgba(124, 92, 255, 0.15);
+  border: 1px solid rgba(124, 92, 255, 0.35);
+  color: #c9bcff;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary-btn:hover {
+  border-color: var(--accent);
+}
+
+.system-note {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12.5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  padding: 5px 14px;
+  margin: 4px 0;
+}
+
 .status-card {
   background: var(--panel-2);
   border: 1px solid rgba(255, 255, 255, 0.06);

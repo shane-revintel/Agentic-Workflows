@@ -18,8 +18,13 @@
           <div class="brand-mark">◆</div>
           <div>
             <h1>Agentic Workflows</h1>
-            <p class="tagline">Inbound → meetings → revenue</p>
+            <p class="tagline">Inbound → conversation → meeting</p>
           </div>
+        </div>
+
+        <div class="mode-switch">
+          <button class="mode-btn active" data-mode="assistant">Assistant</button>
+          <button class="mode-btn" data-mode="sdr">SDR outreach</button>
         </div>
 
         <div class="status-card">
@@ -37,7 +42,18 @@
           </div>
         </div>
 
-        <div class="hints">
+        <!-- SDR: lead picker + current lead card -->
+        <div id="sdr-panel" class="sdr-panel hidden">
+          <p class="hints-title">Reaching out to a lead from Salesbot.io</p>
+          <div id="lead-list" class="lead-list"></div>
+          <div id="lead-card" class="lead-card"></div>
+          <button id="restart-outreach" class="primary-btn">↻ Restart outreach</button>
+          <p class="hints-title">Reply as the prospect</p>
+          <div id="sdr-hints" class="hints"></div>
+        </div>
+
+        <!-- Assistant: example prompts -->
+        <div id="assistant-panel" class="hints">
           <p class="hints-title">Try the revenue tools</p>
           <button
             class="hint"
@@ -57,18 +73,12 @@
           >
             Forecast revenue
           </button>
-          <button
-            class="hint"
-            data-msg="draft email: name=Sam; company=Acme; purpose=meeting_request; context=faster onboarding"
-          >
-            Draft a meeting email
-          </button>
           <button class="hint" data-msg="help">What can you do?</button>
         </div>
 
         <p class="footnote">
           Offline demo mode works with no API key. Set
-          <code>OPENAI_API_KEY</code> to enable full LLM reasoning.
+          <code>OPENAI_API_KEY</code> for full natural-language conversation.
         </p>
       </aside>
 

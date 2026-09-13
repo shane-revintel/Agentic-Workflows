@@ -11,8 +11,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .agent import Agent
+from .booking import list_bookings
+from .leads import get_lead, list_leads
 from .llm import get_llm
-from .schemas import ChatRequest, ChatResponse, HealthResponse, ToolCall
+from .schemas import ChatRequest, ChatResponse, HealthResponse, LeadModel, ToolCall
+from .sdr import SDR_TOOLS, build_sdr_system_prompt
 from .tools import REGISTRY
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
@@ -44,14 +47,31 @@ def health() -> HealthResponse:
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
-    agent = Agent()
     history = [{"role": m.role, "content": m.content} for m in request.history]
+
+    if request.mode == "sdr":
+        lead = get_lead(request.lead_id)
+        system_prompt = build_sdr_system_prompt(lead)
+        agent = Agent(system_prompt=system_prompt)
+    else:
+        agent = Agent()
+
     result = agent.run(request.message, history=history)
     return ChatResponse(
         reply=result.reply,
         tool_calls=[ToolCall(**tc) for tc in result.tool_calls],
         provider=result.provider,
     )
+
+
+@app.get("/api/leads", response_model=list[LeadModel])
+def leads() -> list[LeadModel]:
+    return [LeadModel(**lead.as_dict()) for lead in list_leads()]
+
+
+@app.get("/api/bookings")
+def bookings() -> list[dict]:
+    return list_bookings()
 
 
 if FRONTEND_DIR.exists():

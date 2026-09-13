@@ -34,7 +34,12 @@ class Decision:
 class LLMClient:
     name: str = "base"
 
-    def decide(self, messages: List[Dict[str, str]], tools: Dict[str, Tool]) -> Decision:
+    def decide(
+        self,
+        messages: List[Dict[str, str]],
+        tools: Dict[str, Tool],
+        system_prompt: Optional[str] = None,
+    ) -> Decision:
         raise NotImplementedError
 
 
@@ -50,7 +55,12 @@ class RuleBasedLLM(LLMClient):
 
     name = "rule-based"
 
-    def decide(self, messages: List[Dict[str, str]], tools: Dict[str, Tool]) -> Decision:
+    def decide(
+        self,
+        messages: List[Dict[str, str]],
+        tools: Dict[str, Tool],
+        system_prompt: Optional[str] = None,
+    ) -> Decision:
         last = messages[-1] if messages else {"role": "user", "content": ""}
 
         # If we just ran a tool, summarize its result as the final answer.
@@ -149,6 +159,23 @@ class RuleBasedLLM(LLMClient):
                 }}]
             )
 
+        if "when" in kv or lowered.startswith(("book meeting", "book:")):
+            return Decision(
+                tool_calls=[{"name": "book_meeting", "arguments": {
+                    "name": kv.get("name", ""),
+                    "when": kv.get("when", ""),
+                    "email": kv.get("email", ""),
+                    "topic": kv.get("topic", "intro call"),
+                }}]
+            )
+
+        if lowered.startswith("propose") or "meeting times" in lowered or "propose times" in lowered:
+            return Decision(
+                tool_calls=[{"name": "propose_meeting_times", "arguments": {
+                    "timezone": kv.get("timezone", "UTC"),
+                }}]
+            )
+
         return None
 
     def _extract_math(self, text: str) -> Optional[str]:
@@ -223,8 +250,15 @@ class OpenAILLM(LLMClient):
         self._client = OpenAI()
         self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-    def decide(self, messages: List[Dict[str, str]], tools: Dict[str, Tool]) -> Decision:
-        convo: List[Dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    def decide(
+        self,
+        messages: List[Dict[str, str]],
+        tools: Dict[str, Tool],
+        system_prompt: Optional[str] = None,
+    ) -> Decision:
+        convo: List[Dict[str, Any]] = [
+            {"role": "system", "content": system_prompt or SYSTEM_PROMPT}
+        ]
         for m in messages:
             # Only user/assistant turns reach here; this backend owns tool turns.
             if m["role"] in ("user", "assistant"):

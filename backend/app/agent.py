@@ -24,9 +24,15 @@ class AgentResult:
 
 
 class Agent:
-    def __init__(self, llm: LLMClient | None = None, tools: Dict[str, Tool] | None = None) -> None:
+    def __init__(
+        self,
+        llm: LLMClient | None = None,
+        tools: Dict[str, Tool] | None = None,
+        system_prompt: str | None = None,
+    ) -> None:
         self.llm = llm or get_llm()
         self.tools = tools or REGISTRY
+        self.system_prompt = system_prompt
 
     def run(self, message: str, history: List[Dict[str, str]] | None = None) -> AgentResult:
         messages: List[Dict[str, str]] = list(history or [])
@@ -35,7 +41,7 @@ class Agent:
         executed: List[Dict[str, Any]] = []
 
         for _ in range(MAX_STEPS):
-            decision: Decision = self.llm.decide(messages, self.tools)
+            decision: Decision = self.llm.decide(messages, self.tools, self.system_prompt)
 
             # A final answer ends the loop. Some backends (e.g. OpenAI) run their
             # own tool loop internally and report the calls they already executed

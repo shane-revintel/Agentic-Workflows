@@ -3,7 +3,21 @@ const form = document.getElementById("composer");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 
-const history = [];
+const state = {
+  mode: "assistant",
+  leads: [],
+  leadId: null,
+  history: [],
+};
+
+const SDR_PROSPECT_HINTS = [
+  "Who is this?",
+  "Not interested, thanks.",
+  "What do you actually do?",
+  "I'm pretty busy right now.",
+  "How is this different from what we use?",
+  "Ok, what times do you have?",
+];
 
 function el(tag, className, html) {
   const node = document.createElement(tag);
@@ -14,7 +28,7 @@ function el(tag, className, html) {
 
 function escapeHtml(text) {
   const div = document.createElement("div");
-  div.textContent = text;
+  div.textContent = text == null ? "" : text;
   return div.innerHTML;
 }
 
@@ -48,6 +62,12 @@ function addMessage(role, text, toolCalls) {
   return wrap;
 }
 
+function addSystemNote(text) {
+  const note = el("div", "system-note", escapeHtml(text));
+  messagesEl.appendChild(note);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
 function addTyping() {
   const wrap = el("div", "msg agent typing");
   wrap.appendChild(el("div", "avatar", "◆"));
@@ -59,9 +79,11 @@ function addTyping() {
   return wrap;
 }
 
-async function sendMessage(message) {
-  addMessage("user", message);
-  history.push({ role: "user", content: message });
+async function sendMessage(message, opts = {}) {
+  const { hideUser = false } = opts;
+  if (!hideUser) addMessage("user", message);
+  const priorHistory = state.history.slice();
+  state.history.push({ role: "user", content: message });
   input.value = "";
   sendBtn.disabled = true;
   const typing = addTyping();
@@ -70,7 +92,12 @@ async function sendMessage(message) {
     const resp = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, history: history.slice(0, -1) }),
+      body: JSON.stringify({
+        message,
+        history: priorHistory,
+        mode: state.mode,
+        lead_id: state.leadId,
+      }),
     });
     const data = await resp.json();
     typing.remove();
@@ -78,7 +105,10 @@ async function sendMessage(message) {
       addMessage("agent", `Error: ${data.detail || resp.statusText}`);
     } else {
       addMessage("agent", data.reply, data.tool_calls);
-      history.push({ role: "assistant", content: data.reply });
+      state.history.push({ role: "assistant", content: data.reply });
+      if ((data.tool_calls || []).some((tc) => tc.name === "book_meeting")) {
+        addSystemNote("🎉 Meeting booked — captured in the pipeline.");
+      }
     }
   } catch (err) {
     typing.remove();
@@ -95,9 +125,102 @@ form.addEventListener("submit", (e) => {
   if (message) sendMessage(message);
 });
 
-document.querySelectorAll(".hint").forEach((btn) => {
+// --- Mode + SDR wiring -----------------------------------------------------
+
+function currentLead() {
+  return state.leads.find((l) => l.id === state.leadId) || state.leads[0];
+}
+
+function renderLeadCard() {
+  const lead = currentLead();
+  const card = document.getElementById("lead-card");
+  if (!lead) {
+    card.innerHTML = "";
+    return;
+  }
+  card.innerHTML = `
+    <div class="lead-name">${escapeHtml(lead.name)}</div>
+    <div class="lead-title">${escapeHtml(lead.title)} · ${escapeHtml(lead.company)}</div>
+    <div class="lead-fit"><b>Why they fit:</b> ${escapeHtml(lead.fit_reason)}</div>
+    <div class="lead-score">Fit score: ${lead.fit_score}/100</div>
+  `;
+}
+
+function renderLeadList() {
+  const list = document.getElementById("lead-list");
+  list.innerHTML = "";
+  state.leads.forEach((lead) => {
+    const btn = el("button", "lead-chip" + (lead.id === state.leadId ? " active" : ""));
+    btn.textContent = `${lead.name} — ${lead.company}`;
+    btn.addEventListener("click", () => {
+      state.leadId = lead.id;
+      renderLeadList();
+      renderLeadCard();
+      startOutreach();
+    });
+    list.appendChild(btn);
+  });
+}
+
+function renderSdrHints() {
+  const box = document.getElementById("sdr-hints");
+  box.innerHTML = "";
+  SDR_PROSPECT_HINTS.forEach((msg) => {
+    const btn = el("button", "hint", escapeHtml(msg));
+    btn.addEventListener("click", () => sendMessage(msg));
+    box.appendChild(btn);
+  });
+}
+
+function startOutreach() {
+  messagesEl.innerHTML = "";
+  state.history = [];
+  const lead = currentLead();
+  if (lead) addSystemNote(`Reaching out to ${lead.name} at ${lead.company}…`);
+  sendMessage(
+    "(Start the outreach: send your opening message to this lead.)",
+    { hideUser: true }
+  );
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  document.querySelectorAll(".mode-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.mode === mode);
+  });
+  document.getElementById("sdr-panel").classList.toggle("hidden", mode !== "sdr");
+  document.getElementById("assistant-panel").classList.toggle("hidden", mode === "sdr");
+
+  messagesEl.innerHTML = "";
+  state.history = [];
+
+  if (mode === "sdr") {
+    input.placeholder = "Reply as the prospect…";
+    if (state.leads.length && !state.leadId) state.leadId = state.leads[0].id;
+    renderLeadList();
+    renderLeadCard();
+    renderSdrHints();
+    startOutreach();
+  } else {
+    input.placeholder = "Ask your agent anything…";
+    addMessage(
+      "agent",
+      "Welcome to your inbound-revenue agent. I can score and qualify leads, forecast revenue, and draft outreach — or switch to SDR outreach to watch me converse a lead into a booked meeting."
+    );
+  }
+}
+
+document.querySelectorAll(".mode-btn").forEach((btn) => {
+  btn.addEventListener("click", () => setMode(btn.dataset.mode));
+});
+
+document.getElementById("restart-outreach").addEventListener("click", startOutreach);
+
+document.querySelectorAll("#assistant-panel .hint").forEach((btn) => {
   btn.addEventListener("click", () => sendMessage(btn.dataset.msg));
 });
+
+// --- Boot ------------------------------------------------------------------
 
 async function loadHealth() {
   const dot = document.getElementById("status-dot");
@@ -114,8 +237,17 @@ async function loadHealth() {
   }
 }
 
-addMessage(
-  "agent",
-  "Welcome to your inbound-revenue agent. I can score and qualify inbound leads, draft the outreach that books the meeting, and forecast the revenue those meetings produce — with a real tool-calling loop. Try the buttons on the left, or type 'help'."
-);
-loadHealth();
+async function loadLeads() {
+  try {
+    const resp = await fetch("/api/leads");
+    state.leads = await resp.json();
+    if (state.leads.length) state.leadId = state.leads[0].id;
+  } catch (err) {
+    state.leads = [];
+  }
+}
+
+(async function init() {
+  await Promise.all([loadHealth(), loadLeads()]);
+  setMode("assistant");
+})();
