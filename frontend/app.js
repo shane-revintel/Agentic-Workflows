@@ -216,6 +216,42 @@ document.querySelectorAll(".mode-btn").forEach((btn) => {
 
 document.getElementById("restart-outreach").addEventListener("click", startOutreach);
 
+// --- CSV lead import -------------------------------------------------------
+
+const importBtn = document.getElementById("import-btn");
+const csvInput = document.getElementById("csv-input");
+const importStatus = document.getElementById("import-status");
+
+importBtn.addEventListener("click", () => csvInput.click());
+
+csvInput.addEventListener("change", async () => {
+  const file = csvInput.files && csvInput.files[0];
+  if (!file) return;
+  importStatus.textContent = `Importing ${file.name}…`;
+  try {
+    const text = await file.text();
+    const resp = await fetch("/api/leads/import", {
+      method: "POST",
+      headers: { "Content-Type": "text/csv" },
+      body: text,
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      importStatus.textContent = `⚠️ ${data.detail || "Import failed"}`;
+      return;
+    }
+    importStatus.textContent = `✅ Imported ${data.imported} leads from ${file.name}`;
+    await loadLeads();
+    renderLeadList();
+    renderLeadCard();
+    startOutreach();
+  } catch (err) {
+    importStatus.textContent = `⚠️ ${err.message}`;
+  } finally {
+    csvInput.value = "";
+  }
+});
+
 document.querySelectorAll("#assistant-panel .hint").forEach((btn) => {
   btn.addEventListener("click", () => sendMessage(btn.dataset.msg));
 });

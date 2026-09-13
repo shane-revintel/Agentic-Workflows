@@ -6,14 +6,14 @@ import logging
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .agent import Agent
 from .booking import list_bookings
-from .leads import get_lead, list_leads
+from .leads import get_lead, import_leads_from_csv, list_leads
 from .llm import RuleBasedLLM, get_llm
 from .schemas import ChatRequest, ChatResponse, HealthResponse, LeadModel, ToolCall
 from .sdr import SDR_TOOLS, build_sdr_system_prompt
@@ -112,6 +112,23 @@ def chat(request: ChatRequest) -> ChatResponse:
 @app.get("/api/leads", response_model=list[LeadModel])
 def leads() -> list[LeadModel]:
     return [LeadModel(**lead.as_dict()) for lead in list_leads()]
+
+
+@app.post("/api/leads/import")
+async def import_leads(request: Request) -> dict:
+    """Import leads from a raw CSV body (e.g. a Salesbot.io / Bowtie export)."""
+    raw = (await request.body()).decode("utf-8-sig", errors="replace")
+    if not raw.strip():
+        raise HTTPException(status_code=400, detail="Empty CSV upload.")
+    try:
+        leads_list = import_leads_from_csv(raw)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {
+        "imported": len(leads_list),
+        "source": "imported",
+        "leads": [LeadModel(**lead.as_dict()).model_dump() for lead in leads_list],
+    }
 
 
 @app.get("/api/bookings")

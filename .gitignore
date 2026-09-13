@@ -11,3 +11,6 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# Imported lead data (may contain real contacts)
+backend/data/

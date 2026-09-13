@@ -44,7 +44,10 @@
 
         <!-- SDR: lead picker + current lead card -->
         <div id="sdr-panel" class="sdr-panel hidden">
-          <p class="hints-title">Reaching out to a lead from Salesbot.io</p>
+          <p class="hints-title">Leads from Salesbot.io</p>
+          <button id="import-btn" class="primary-btn">⬆ Import leads (CSV)</button>
+          <input id="csv-input" type="file" accept=".csv,text/csv" class="hidden" />
+          <div id="import-status" class="import-status"></div>
           <div id="lead-list" class="lead-list"></div>
           <div id="lead-card" class="lead-card"></div>
           <button id="restart-outreach" class="primary-btn">↻ Restart outreach</button>
